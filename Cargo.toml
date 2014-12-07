@@ -3,6 +3,7 @@ name = "pam_luksresume"
 version = "0.0.1"
 authors = [ "Raphael Catolino<raphael.catolino@gmail.com>" ]
 
-[[bin]]
+[lib]
 
 name = "pam_luksresume"
+crate-type = ["dylib"]
