@@ -4,6 +4,13 @@ version = "0.0.1"
 authors = [ "Raphael Catolino<raphael.catolino@gmail.com>" ]
 
 [lib]
-
 name = "pam_luksresume"
 crate-type = ["dylib"]
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+debug = false
