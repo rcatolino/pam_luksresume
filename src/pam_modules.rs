@@ -1,31 +1,41 @@
 #![allow(dead_code)]
 
 use core::option::Option;
+use core::slice::SlicePrelude;
+use core::str::StrPrelude;
+use libc::{c_char, c_int, c_uint};
 
 pub enum PamHandleHidden { }
 pub type PamHandle = PamHandleHidden;
 #[repr(C)]
-#[allow(dead_code)]
 pub struct PamMessage {
-    pub msg_style: ::libc::c_int,
-    pub msg: *const ::libc::c_char,
+    pub msg_style: c_int,
+    pub msg: *const c_char,
 }
 #[repr(C)]
-#[allow(dead_code)]
 pub struct PamResponse {
-    pub resp: *mut ::libc::c_char,
-    pub resp_retcode: ::libc::c_int,
+    pub resp: *mut c_char,
+    pub resp_retcode: c_int,
 }
 #[repr(C)]
-#[allow(dead_code)]
 pub struct PamConv {
-    pub conv: Option<extern "C" fn (arg1: ::libc::c_int, arg2: *mut *const PamMessage,
+    pub conv: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
                                     arg3: *mut *mut PamResponse, arg4: *mut ::libc::c_void)
-                                    -> ::libc::c_int>,
+                                    -> c_int>,
     pub appdata_ptr: *mut ::libc::c_void,
 }
 #[repr(C)]
-#[allow(dead_code)]
+enum LogLvl {
+    LOG_EMERG	=0,	/* system is unusable */
+    LOG_ALERT	=1,	/* action must be taken immediately */
+    LOG_CRIT	=2,	/* critical conditions */
+    LOG_ERR		=3,	/* error conditions */
+    LOG_WARNING	=4,	/* warning conditions */
+    LOG_NOTICE	=5,	/* normal but significant condition */
+    LOG_INFO	=6,	/* informational */
+    LOG_DEBUG	=7,	/* debug-level messages */
+}
+#[repr(C)]
 pub enum PamResult {
      PAM_SUCCESS    = 0,		/* Successful function return */
      PAM_OPEN_ERR   = 1,		/* dlopen() failure when dynamically */
@@ -64,15 +74,15 @@ pub enum PamResult {
 /* Note: these flags are used for pam_setcred() */
 /* Set user credentials for an authentication service */
 pub mod pam_flags {
-    static PAM_ESTABLISH_CRED : ::libc::c_uint = 0x0002;
-    static PAM_DELETE_CRED : ::libc::c_uint = 0x0004;
-    static PAM_REINITIALIZE_CRED : ::libc::c_uint = 0x0008;
-    static PAM_REFRESH_CRED : ::libc::c_uint = 0x0010;
-    static PAM_CHANGE_EXPIRED_AUTHTOK : ::libc::c_uint = 0x0020;
+    use libc::c_uint;
+    static PAM_ESTABLISH_CRED : c_uint = 0x0002;
+    static PAM_DELETE_CRED : c_uint = 0x0004;
+    static PAM_REINITIALIZE_CRED : c_uint = 0x0008;
+    static PAM_REFRESH_CRED : c_uint = 0x0010;
+    static PAM_CHANGE_EXPIRED_AUTHTOK : c_uint = 0x0020;
 }
 
 #[repr(C)]
-#[allow(dead_code)]
 pub enum PamItemType {
      PAM_SERVICE	    = 1,	/* The service name */
      PAM_USER               = 2,	/* The user name */
@@ -90,64 +100,72 @@ pub enum PamItemType {
 }
 
 #[repr(C)]
-#[allow(dead_code)]
 pub struct PamXauthData {
-    pub namelen: ::libc::c_int,
-    pub name: *mut ::libc::c_char,
-    pub datalen: ::libc::c_int,
-    pub data: *mut ::libc::c_char,
+    pub namelen: c_int,
+    pub name: *mut c_char,
+    pub datalen: c_int,
+    pub data: *mut c_char,
 }
 extern "C" {
     pub fn set_item(pamh: *mut PamHandle, item_type: PamItemType,
                         item: *const ::libc::c_void) -> PamResult;
     pub fn get_item(pamh: *const PamHandle, item_type: PamItemType,
                         item: *mut *const ::libc::c_void) -> PamResult;
-    pub fn strerror(pamh: *mut PamHandle, errnum: ::libc::c_int)
-     -> *const ::libc::c_char;
+    pub fn strerror(pamh: *mut PamHandle, errnum: c_int)
+     -> *const c_char;
     pub fn putenv(pamh: *mut PamHandle,
-                      name_value: *const ::libc::c_char) -> PamResult;
-    pub fn getenv(pamh: *mut PamHandle, name: *const ::libc::c_char)
-     -> *const ::libc::c_char;
+                      name_value: *const c_char) -> PamResult;
+    pub fn getenv(pamh: *mut PamHandle, name: *const c_char)
+     -> *const c_char;
     pub fn getenvlist(pamh: *mut PamHandle)
-     -> *mut *mut ::libc::c_char;
+     -> *mut *mut c_char;
     pub fn fail_delay(pamh: *mut PamHandle,
-                          musec_delay: ::libc::c_uint) -> PamResult;
+                          musec_delay: c_uint) -> PamResult;
     pub fn set_data(pamh: *mut PamHandle,
-                        module_data_name: *const ::libc::c_char,
+                        module_data_name: *const c_char,
                         data: *mut ::libc::c_void,
                         cleanup: Option<extern "C" fn (arg1: *mut PamHandle,
                                                        arg2: *mut ::libc::c_void,
-                                                       arg3: ::libc::c_int)>)
-     -> PamResult;
+                                                       arg3: c_int)>) -> PamResult;
     pub fn get_data(pamh: *const PamHandle,
-                        module_data_name: *const ::libc::c_char,
+                        module_data_name: *const c_char,
                         data: *mut *const ::libc::c_void) -> PamResult;
     pub fn get_user(pamh: *mut PamHandle,
-                        user: *mut *const ::libc::c_char,
-                        prompt: *const ::libc::c_char) -> PamResult;
+                        user: *mut *const c_char,
+                        prompt: *const c_char) -> PamResult;
     pub fn sm_authenticate(pamh: *mut PamHandle, flags: u32,
-                               argc: ::libc::c_int,
-                               argv: *mut *const ::libc::c_char)
-     -> PamResult;
-    pub fn sm_setcred(pamh: *mut PamHandle, flags: ::libc::c_uint,
-                          argc: ::libc::c_int,
-                          argv: *mut *const ::libc::c_char) -> PamResult;
-    pub fn sm_acct_mgmt(pamh: *mut PamHandle, flags: ::libc::c_uint,
-                            argc: ::libc::c_int,
-                            argv: *mut *const ::libc::c_char)
-     -> PamResult;
-    pub fn sm_open_session(pamh: *mut PamHandle, flags: ::libc::c_uint,
-                               argc: ::libc::c_int,
-                               argv: *mut *const ::libc::c_char)
-     -> PamResult;
-    pub fn sm_close_session(pamh: *mut PamHandle, flags: ::libc::c_uint,
-                                argc: ::libc::c_int,
-                                argv: *mut *const ::libc::c_char)
-     -> PamResult;
-    pub fn sm_chauthtok(pamh: *mut PamHandle, flags: ::libc::c_uint,
-                            argc: ::libc::c_int,
-                            argv: *mut *const ::libc::c_char)
-     -> PamResult;
+                               argc: c_int,
+                               argv: *mut *const c_char) -> PamResult;
+    pub fn sm_setcred(pamh: *mut PamHandle, flags: c_uint,
+                          argc: c_int,
+                          argv: *mut *const c_char) -> PamResult;
+    pub fn sm_acct_mgmt(pamh: *mut PamHandle, flags: c_uint,
+                            argc: c_int,
+                            argv: *mut *const c_char) -> PamResult;
+    pub fn sm_open_session(pamh: *mut PamHandle, flags: c_uint,
+                               argc: c_int,
+                               argv: *mut *const c_char) -> PamResult;
+    pub fn sm_close_session(pamh: *mut PamHandle, flags: c_uint,
+                                argc: c_int,
+                                argv: *mut *const c_char) -> PamResult;
+    pub fn sm_chauthtok(pamh: *mut PamHandle, flags: c_uint,
+                            argc: c_int,
+                            argv: *mut *const c_char) -> PamResult;
+    fn pam_syslog(pam: *mut PamHandle, priority: LogLvl, fmt: *const c_char);
+    fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
+                fmt: *const u8, string: *const u8) -> c_int;
 }
 
+
+pub fn syslog(pamh: *mut PamHandle, message: &str) {
+    let mut buff = [0 as c_char, ..80];
+    unsafe {
+        if snprintf(buff.as_mut_ptr(), 80, b"%s".as_ptr(),
+                    message.as_bytes().as_ptr()) > 0 {
+            pam_syslog(pamh, LogLvl::LOG_INFO, buff.as_ptr());
+        }
+        // XXX: should/could we do something in case of snprintf failure ?
+        // panicking seems a little extreme...
+    }
+}
 
