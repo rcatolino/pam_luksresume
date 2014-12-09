@@ -6,7 +6,7 @@ extern crate libc;
 extern crate core;
 
 use libc::{c_uint, size_t};
-use pam_modules::{PamHandle, PamResult};
+use pam_modules::{PamHandle, PamResult, syslog};
 mod pam_modules;
 
 // provided by libstd.
@@ -16,26 +16,48 @@ mod pam_modules;
 
 #[no_mangle]
 #[allow(unused_variables)]
-pub fn pam_sm_open_session(pamh: PamHandle, flags: c_uint, argc: size_t, argv: *const u8) -> PamResult {
+pub extern "C" fn pam_sm_open_session(pamh: PamHandle, flags: c_uint,
+                           argc: size_t, argv: *const u8) -> PamResult {
+    syslog(pamh, "In pam_sm_open_session");
 	PamResult::PAM_SERVICE_ERR
 }
 
 #[no_mangle]
 #[allow(unused_variables)]
-pub fn pam_sm_close_session(pamh: PamHandle, flags: c_uint, argc: size_t, argv: *const u8) -> PamResult {
+pub extern "C" fn pam_sm_close_session(pamh: PamHandle, flags: c_uint,
+                            argc: size_t, argv: *const u8) -> PamResult {
+    syslog(pamh, "In pam_sm_close_session");
 	PamResult::PAM_SERVICE_ERR
 }
 
 #[no_mangle]
 #[allow(unused_variables)]
-pub fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint, argc: size_t, argv: *const u8) -> PamResult {
+pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
+                           argc: size_t, argv: *const u8) -> PamResult {
+    syslog(pamh, "In pam_sm_authenticate");
 	PamResult::PAM_SUCCESS
 }
 
 #[no_mangle]
 #[allow(unused_variables)]
-pub fn pam_sm_setcred(pamh: PamHandle, flags: c_uint, argc: size_t, argv: *const u8) -> PamResult {
-	PamResult::PAM_SUCCESS
+pub extern "C" fn pam_sm_setcred(pamh: PamHandle, flags: c_uint,
+                      argc: size_t, argv: *const u8) -> PamResult {
+    syslog(pamh, "In pam_sm_setcred");
+	PamResult::PAM_SERVICE_ERR
 }
 
+#[no_mangle]
+#[allow(unused_variables)]
+pub extern "C" fn pam_sm_acct_mgmt(pamh: PamHandle, flags: c_uint,
+                        argc: size_t, argv: *const u8) -> PamResult {
+    syslog(pamh, "In pam_sm_acct_mgmt");
+	PamResult::PAM_SERVICE_ERR
+}
 
+#[no_mangle]
+#[allow(unused_variables)]
+pub extern "C" fn pam_sm_chauthtok(pamh: PamHandle, flags: c_uint,
+                        argc: size_t, argv: *const u8) -> PamResult {
+    syslog(pamh, "In pam_sm_chauthtok");
+	PamResult::PAM_SERVICE_ERR
+}

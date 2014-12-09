@@ -5,8 +5,7 @@ use core::slice::SlicePrelude;
 use core::str::StrPrelude;
 use libc::{c_char, c_int, c_uint};
 
-pub enum PamHandleHidden { }
-pub type PamHandle = PamHandleHidden;
+pub type PamHandle = *const c_uint;
 #[repr(C)]
 pub struct PamMessage {
     pub msg_style: c_int,
@@ -107,60 +106,59 @@ pub struct PamXauthData {
     pub data: *mut c_char,
 }
 extern "C" {
-    pub fn set_item(pamh: *mut PamHandle, item_type: PamItemType,
+    pub fn set_item(pamh: PamHandle, item_type: PamItemType,
                         item: *const ::libc::c_void) -> PamResult;
     pub fn get_item(pamh: *const PamHandle, item_type: PamItemType,
                         item: *mut *const ::libc::c_void) -> PamResult;
-    pub fn strerror(pamh: *mut PamHandle, errnum: c_int)
+    pub fn strerror(pamh: PamHandle, errnum: c_int)
      -> *const c_char;
-    pub fn putenv(pamh: *mut PamHandle,
+    pub fn putenv(pamh: PamHandle,
                       name_value: *const c_char) -> PamResult;
-    pub fn getenv(pamh: *mut PamHandle, name: *const c_char)
+    pub fn getenv(pamh: PamHandle, name: *const c_char)
      -> *const c_char;
-    pub fn getenvlist(pamh: *mut PamHandle)
+    pub fn getenvlist(pamh: PamHandle)
      -> *mut *mut c_char;
-    pub fn fail_delay(pamh: *mut PamHandle,
+    pub fn fail_delay(pamh: PamHandle,
                           musec_delay: c_uint) -> PamResult;
-    pub fn set_data(pamh: *mut PamHandle,
+    pub fn set_data(pamh: PamHandle,
                         module_data_name: *const c_char,
                         data: *mut ::libc::c_void,
-                        cleanup: Option<extern "C" fn (arg1: *mut PamHandle,
+                        cleanup: Option<extern "C" fn (arg1: PamHandle,
                                                        arg2: *mut ::libc::c_void,
                                                        arg3: c_int)>) -> PamResult;
     pub fn get_data(pamh: *const PamHandle,
                         module_data_name: *const c_char,
                         data: *mut *const ::libc::c_void) -> PamResult;
-    pub fn get_user(pamh: *mut PamHandle,
+    pub fn get_user(pamh: PamHandle,
                         user: *mut *const c_char,
                         prompt: *const c_char) -> PamResult;
-    pub fn sm_authenticate(pamh: *mut PamHandle, flags: u32,
+    pub fn sm_authenticate(pamh: PamHandle, flags: u32,
                                argc: c_int,
                                argv: *mut *const c_char) -> PamResult;
-    pub fn sm_setcred(pamh: *mut PamHandle, flags: c_uint,
+    pub fn sm_setcred(pamh: PamHandle, flags: c_uint,
                           argc: c_int,
                           argv: *mut *const c_char) -> PamResult;
-    pub fn sm_acct_mgmt(pamh: *mut PamHandle, flags: c_uint,
+    pub fn sm_acct_mgmt(pamh: PamHandle, flags: c_uint,
                             argc: c_int,
                             argv: *mut *const c_char) -> PamResult;
-    pub fn sm_open_session(pamh: *mut PamHandle, flags: c_uint,
+    pub fn sm_open_session(pamh: PamHandle, flags: c_uint,
                                argc: c_int,
                                argv: *mut *const c_char) -> PamResult;
-    pub fn sm_close_session(pamh: *mut PamHandle, flags: c_uint,
+    pub fn sm_close_session(pamh: PamHandle, flags: c_uint,
                                 argc: c_int,
                                 argv: *mut *const c_char) -> PamResult;
-    pub fn sm_chauthtok(pamh: *mut PamHandle, flags: c_uint,
+    pub fn sm_chauthtok(pamh: PamHandle, flags: c_uint,
                             argc: c_int,
                             argv: *mut *const c_char) -> PamResult;
-    fn pam_syslog(pam: *mut PamHandle, priority: LogLvl, fmt: *const c_char);
+    fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const u8);
     fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
                 fmt: *const u8, string: *const u8) -> c_int;
 }
 
-
-pub fn syslog(pamh: *mut PamHandle, message: &str) {
-    let mut buff = [0 as c_char, ..80];
+pub fn syslog(pamh: PamHandle, message: &str) {
+    let mut buff = [0u8, ..100];
     unsafe {
-        if snprintf(buff.as_mut_ptr(), 80, b"%s".as_ptr(),
+        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"pam_luksresume: %s".as_ptr(),
                     message.as_bytes().as_ptr()) > 0 {
             pam_syslog(pamh, LogLvl::LOG_INFO, buff.as_ptr());
         }
