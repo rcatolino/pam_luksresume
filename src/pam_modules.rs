@@ -18,9 +18,9 @@ pub struct PamResponse {
 }
 #[repr(C)]
 pub struct PamConv {
-    pub conv: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
-                                    arg3: *mut *mut PamResponse, arg4: *mut ::libc::c_void)
-                                    -> c_int>,
+    pub cb: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
+                                  arg3: *mut *mut PamResponse, arg4: *mut ::libc::c_void)
+                                  -> c_int>,
     pub appdata_ptr: *mut ::libc::c_void,
 }
 #[repr(C)]

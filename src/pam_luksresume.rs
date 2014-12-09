@@ -8,7 +8,8 @@ extern crate libc;
 use core::ptr;
 use core::prelude::*;
 use libc::{c_char, c_void, c_uint, size_t};
-use pam_modules::{PamItemType, PamHandle, PamResult, pam_get_item, syslog, printf};
+use pam_modules::{PamConv, PamItemType, PamHandle, PamResult,
+                  pam_get_item, syslog, printf};
 mod pam_modules;
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
@@ -36,11 +37,12 @@ pub extern "C" fn pam_sm_close_session(pamh: PamHandle, flags: c_uint,
 pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
                            argc: size_t, argv: *const u8) -> PamResult {
     syslog(pamh, "In pam_sm_authenticate");
-    match get_password(pamh) {
-        Some(buffer) => {
-            syslog(pamh, "got password !");
-            unsafe {
-                printf(b"password : %p\n".as_ptr(), buffer);
+    match get_conv(pamh) {
+        Some(conv) => {
+            syslog(pamh, "got conversation structure !");
+            match conv.cb {
+                Some(cb) => syslog(pamh, "WE GOT A FUCKING CALLBACK !"),
+                None => syslog(pamh, "no callback..."),
             }
         }
         None => return PamResult::AUTHINFO_UNAVAIL,
@@ -73,12 +75,26 @@ pub extern "C" fn pam_sm_chauthtok(pamh: PamHandle, flags: c_uint,
 	PamResult::SERVICE_ERR
 }
 
-/*
-fn call_conv() {
-
+fn get_conv(pamh: PamHandle) -> Option<PamConv> {
+    let raw_conv : *const PamConv = ptr::null();
+    match unsafe {
+        pam_get_item(pamh, PamItemType::PAM_CONV, &mut (raw_conv as *const c_void))
+    } {
+        PamResult::SUCCESS => match unsafe { raw_conv.as_ref() } {
+            None => {
+                syslog(pamh, "Error getting conversation structure, null result");
+                None
+            }
+            Some(conv) => Some(*conv)
+        },
+        _ => {
+            syslog(pamh, "Error geting conversation structure");
+            None
+        }
+    }
 }
-*/
 
+/*
 fn get_password(pamh: PamHandle) -> Option<*const c_char> {
     let password: *const c_char = ptr::null();
     match unsafe {
@@ -91,3 +107,4 @@ fn get_password(pamh: PamHandle) -> Option<*const c_char> {
         }
     }
 }
+*/
