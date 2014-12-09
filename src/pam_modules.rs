@@ -36,38 +36,38 @@ enum LogLvl {
 }
 #[repr(C)]
 pub enum PamResult {
-     PAM_SUCCESS    = 0,		/* Successful function return */
-     PAM_OPEN_ERR   = 1,		/* dlopen() failure when dynamically */
-     PAM_SYMBOL_ERR     = 2,	/* Symbol not found */
-     PAM_SERVICE_ERR    = 3,	/* Error in service module */
-     PAM_SYSTEM_ERR     = 4,	/* System error */
-     PAM_BUF_ERR    = 5,		/* Memory buffer error */
-     PAM_PERM_DENIED    = 6,	/* Permission denied */
-     PAM_AUTH_ERR   = 7,		/* Authentication failure */
-     PAM_CRED_INSUFFICIENT  = 8,	/* Can not access authentication data */
-     PAM_AUTHINFO_UNAVAIL   = 9,	/* Underlying authentication service can not retrieve authentication information  */
-     PAM_USER_UNKNOWN   = 10,	/* User not known to the underlying authenticaiton module */
-     PAM_MAXTRIES   = 11,		/* An authentication service has maintained a retry count which has been reached. No further retries should be attempted */
-     PAM_NEW_AUTHTOK_REQD   = 12,	/* New authentication token required. */
-     PAM_ACCT_EXPIRED   = 13,	/* User account has expired */
-     PAM_SESSION_ERR    = 14,	/* Can not make/remove an entry for the specified session */
-     PAM_CRED_UNAVAIL   = 15,	/* Underlying authentication service can not retrieve user credentials */
-     PAM_CRED_EXPIRED   = 16,	/* User credentials expired */
-     PAM_CRED_ERR   = 17,		/* Failure setting user credentials */
-     PAM_NO_MODULE_DATA     = 18,	/* No module specific data is present */
-     PAM_CONV_ERR   = 19,		/* Conversation error */
-     PAM_AUTHTOK_ERR    = 20,	/* Authentication token manipulation error */
-     PAM_AUTHTOK_RECOVERY_ERR   = 21, /* Authentication information cannot be recovered */
-     PAM_AUTHTOK_LOCK_BUSY  = 22,   /* Authentication token lock busy */
-     PAM_AUTHTOK_DISABLE_AGING  = 23, /* Authentication token aging disabled */
-     PAM_TRY_AGAIN  = 24,	/* Preliminary check by password service */
-     PAM_IGNORE     = 25,		/* Ignore underlying account module regardless of whether the control flag is required, optional, or sufficient */
-     PAM_ABORT  = 26,            /* Critical error (?module fail now request) */
-     PAM_AUTHTOK_EXPIRED    = 27, /* user's authentication token has expired */
-     PAM_MODULE_UNKNOWN     = 28, /* module is not known */
-     PAM_BAD_ITEM           = 29, /* Bad item passed to pam_*_item() */
-     PAM_CONV_AGAIN         = 30, /* conversation function is event driven and data is not available yet */
-     PAM_INCOMPLETE         = 31, /* please call this function again to complete authentication stack. Before calling again, verify that conversation is completed */
+     SUCCESS    = 0,		/* Successful function return */
+     OPEN_ERR   = 1,		/* dlopen() failure when dynamically */
+     SYMBOL_ERR     = 2,	/* Symbol not found */
+     SERVICE_ERR    = 3,	/* Error in service module */
+     SYSTEM_ERR     = 4,	/* System error */
+     BUF_ERR    = 5,		/* Memory buffer error */
+     PERM_DENIED    = 6,	/* Permission denied */
+     AUTH_ERR   = 7,		/* Authentication failure */
+     CRED_INSUFFICIENT  = 8,	/* Can not access authentication data */
+     AUTHINFO_UNAVAIL   = 9,	/* Underlying authentication service can not retrieve authentication information  */
+     USER_UNKNOWN   = 10,	/* User not known to the underlying authenticaiton module */
+     MAXTRIES   = 11,		/* An authentication service has maintained a retry count which has been reached. No further retries should be attempted */
+     NEW_AUTHTOK_REQD   = 12,	/* New authentication token required. */
+     ACCT_EXPIRED   = 13,	/* User account has expired */
+     SESSION_ERR    = 14,	/* Can not make/remove an entry for the specified session */
+     CRED_UNAVAIL   = 15,	/* Underlying authentication service can not retrieve user credentials */
+     CRED_EXPIRED   = 16,	/* User credentials expired */
+     CRED_ERR   = 17,		/* Failure setting user credentials */
+     NO_MODULE_DATA     = 18,	/* No module specific data is present */
+     CONV_ERR   = 19,		/* Conversation error */
+     AUTHTOK_ERR    = 20,	/* Authentication token manipulation error */
+     AUTHTOK_RECOVERY_ERR   = 21, /* Authentication information cannot be recovered */
+     AUTHTOK_LOCK_BUSY  = 22,   /* Authentication token lock busy */
+     AUTHTOK_DISABLE_AGING  = 23, /* Authentication token aging disabled */
+     TRY_AGAIN  = 24,	/* Preliminary check by password service */
+     IGNORE     = 25,		/* Ignore underlying account module regardless of whether the control flag is required, optional, or sufficient */
+     ABORT  = 26,            /* Critical error (?module fail now request) */
+     AUTHTOK_EXPIRED    = 27, /* user's authentication token has expired */
+     MODULE_UNKNOWN     = 28, /* module is not known */
+     BAD_ITEM           = 29, /* Bad item passed to *_item() */
+     CONV_AGAIN         = 30, /* conversation function is event driven and data is not available yet */
+     INCOMPLETE         = 31, /* please call this function again to complete authentication stack. Before calling again, verify that conversation is completed */
 }
 
 /* Note: these flags are used for pam_setcred() */
@@ -106,9 +106,9 @@ pub struct PamXauthData {
     pub data: *mut c_char,
 }
 extern "C" {
-    pub fn set_item(pamh: PamHandle, item_type: PamItemType,
+    pub fn pam_set_item(pamh: PamHandle, item_type: PamItemType,
                         item: *const ::libc::c_void) -> PamResult;
-    pub fn get_item(pamh: *const PamHandle, item_type: PamItemType,
+    pub fn pam_get_item(pamh: PamHandle, item_type: PamItemType,
                         item: *mut *const ::libc::c_void) -> PamResult;
     pub fn strerror(pamh: PamHandle, errnum: c_int)
      -> *const c_char;
@@ -126,7 +126,7 @@ extern "C" {
                         cleanup: Option<extern "C" fn (arg1: PamHandle,
                                                        arg2: *mut ::libc::c_void,
                                                        arg3: c_int)>) -> PamResult;
-    pub fn get_data(pamh: *const PamHandle,
+    pub fn get_data(pamh: PamHandle,
                         module_data_name: *const c_char,
                         data: *mut *const ::libc::c_void) -> PamResult;
     pub fn get_user(pamh: PamHandle,
@@ -153,12 +153,13 @@ extern "C" {
     fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const u8);
     fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
                 fmt: *const u8, string: *const u8) -> c_int;
+    pub fn printf(buff: *const u8, buff: *const c_char);
 }
 
 pub fn syslog(pamh: PamHandle, message: &str) {
     let mut buff = [0u8, ..100];
     unsafe {
-        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"pam_luksresume: %s".as_ptr(),
+        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"%s".as_ptr(),
                     message.as_bytes().as_ptr()) > 0 {
             pam_syslog(pamh, LogLvl::LOG_INFO, buff.as_ptr());
         }
