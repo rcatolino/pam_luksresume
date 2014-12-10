@@ -105,10 +105,11 @@ pub struct PamXauthData {
     pub datalen: c_int,
     pub data: *mut c_char,
 }
+#[link(name="pam")]
 extern "C" {
     pub fn pam_set_item(pamh: PamHandle, item_type: PamItemType,
                         item: *const ::libc::c_void) -> PamResult;
-    pub fn pam_get_item(pamh: PamHandle, item_type: PamItemType,
+    pub fn pam_get_item(pamh: PamHandle, item_type: c_int,
                         item: *mut *const ::libc::c_void) -> PamResult;
     pub fn strerror(pamh: PamHandle, errnum: c_int)
      -> *const c_char;

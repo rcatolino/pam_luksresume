@@ -6,8 +6,9 @@ extern crate core;
 extern crate libc;
 
 use core::ptr;
+use core::intrinsics::transmute;
 use core::prelude::*;
-use libc::{c_char, c_void, c_uint, size_t};
+use libc::{c_char, c_void, c_int, c_uint, size_t};
 use pam_modules::{PamConv, PamItemType, PamHandle, PamResult,
                   pam_get_item, syslog, printf};
 mod pam_modules;
@@ -76,16 +77,18 @@ pub extern "C" fn pam_sm_chauthtok(pamh: PamHandle, flags: c_uint,
 }
 
 fn get_conv(pamh: PamHandle) -> Option<PamConv> {
-    let raw_conv : *const PamConv = ptr::null();
+    let mut raw_conv : *const c_void = ptr::null();
     match unsafe {
-        pam_get_item(pamh, PamItemType::PAM_CONV, &mut (raw_conv as *const c_void))
+        pam_get_item(pamh, PamItemType::PAM_CONV as c_int, &mut raw_conv)
     } {
         PamResult::SUCCESS => match unsafe { raw_conv.as_ref() } {
             None => {
                 syslog(pamh, "Error getting conversation structure, null result");
                 None
             }
-            Some(conv) => Some(*conv)
+            Some(conv) => unsafe {
+                Some(*transmute::<*const c_void, *const PamConv>(conv))
+            }
         },
         _ => {
             syslog(pamh, "Error geting conversation structure");
