@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use core::option::Option;
-use core::slice::SlicePrelude;
-use core::str::StrPrelude;
-use libc::{c_char, c_int, c_uint};
+use core::prelude::*;
+use core::intrinsics::volatile_set_memory;
+use core::ptr::RawMutPtr;
+use libc::{c_char, c_int, c_uint, c_void, free, strlen};
 
 pub type PamHandle = *const c_uint;
 #[repr(C)]
@@ -53,11 +53,49 @@ pub struct PamMessage {
     pub msg_style: PamMsgStyle,
     pub msg: *const u8,
 }
+
 #[repr(C)]
 pub struct PamResponse {
     pub resp: *mut c_char,
     pub resp_retcode: PamResult,
 }
+
+// This is a wrapper containing a valid (non null) PamResponse pointer,
+// which is freed on destruction.
+pub struct PamResponsePtr {
+    ptr: *mut PamResponse,
+}
+
+impl PamResponsePtr {
+    pub fn new(ptr: *mut PamResponse) -> Option<PamResponsePtr> {
+        if ptr.is_null() {
+            None
+        } else {
+            Some(PamResponsePtr { ptr: ptr })
+        }
+    }
+
+    pub fn get_buff(&self) -> *const c_char {
+        unsafe {
+            (*self.ptr).resp as *const c_char
+        }
+    }
+}
+
+impl Drop for PamResponsePtr {
+    fn drop(&mut self) {
+        unsafe {
+            for resp in self.ptr.as_mut().into_iter() {
+                volatile_set_memory(resp.resp, 0u8, strlen(resp.resp as *const c_char) as uint);
+                printf(b"Freing response array, pointer : %p\n".as_ptr(),
+                       resp.resp as *const c_char);
+                let asptr: *mut PamResponse = resp;
+                free(asptr as *mut c_void);
+            }
+        }
+    }
+}
+
 #[repr(C)]
 pub struct PamConv {
     pub cb: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
