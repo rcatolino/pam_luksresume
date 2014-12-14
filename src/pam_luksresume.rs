@@ -33,43 +33,42 @@ pub extern "C" fn pam_sm_close_session(pamh: PamHandle, flags: c_uint,
 	PamResult::SERVICE_ERR
 }
 
+fn get_password(pamh: PamHandle) -> Result<*const c_char, &'static str> {
+    get_conv(pamh).ok_or("Failed to get conversation callback.").and_then(|conv| {
+        conv.cb.ok_or("Error, callback is null").and_then(|cb| {
+            syslog(pamh, "WE GOT A FUCKING CALLBACK !");
+            let msgs = [ PamMessage {
+                msg_style: PamMsgStyle::PROMPT_ECHO_OFF,
+                msg: b"".as_ptr(),
+            } ];
+            let mut responses: *mut PamResponse = ptr::null_mut();
+            // Send 1 message to client, asking for a password.
+            // We have to cleanup and free resp array
+            if cb(1, &mut (msgs.as_ptr()), &mut responses, conv.appdata_ptr) == 1 {
+                Err("Error in conversation callback.")
+            } else {
+                unsafe { responses.as_ref() }.ok_or("Error, no reponse array.")
+                        .and_then(|rsp| Ok(rsp.resp as *const c_char))
+            }
+        })
+    })
+}
+
 #[no_mangle]
 #[allow(unused_variables)]
 pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
-                           argc: size_t, argv: *const u8) -> PamResult {
+                                      argc: size_t, argv: *const u8) -> PamResult {
     syslog(pamh, "In pam_sm_authenticate");
-    match get_conv(pamh) {
-        Some(conv) => {
-            syslog(pamh, "got conversation structure !");
-            match conv.cb {
-                Some(cb) => {
-                    syslog(pamh, "WE GOT A FUCKING CALLBACK !");
-                    let msgs = [ PamMessage {
-                        msg_style: PamMsgStyle::PROMPT_ECHO_OFF,
-                        msg: b"".as_ptr(),
-                    } ];
-                    let mut responses: *mut PamResponse = ptr::null_mut();
-                    // Send 1 message to client, asking for a password.
-                    // We have to cleanup and free resp array
-                    if cb(1, &mut (msgs.as_ptr()), &mut responses, conv.appdata_ptr) == 1 {
-                        syslog(pamh, "Error in conversation callback.");
-                    } else {
-                        match unsafe { responses.as_ref() } {
-                            Some(rsp) => unsafe {
-                                printf(b"Got a password : %s\n".as_ptr(),
-                                       rsp.resp as *const c_char)
-                            },
-                            None => syslog(pamh, "Error, no reponse array."),
-                        }
-                    }
-                }
-                None => syslog(pamh, "Failed to get conversation callbacks."),
-            }
-        }
-        None => return PamResult::AUTHINFO_UNAVAIL,
+    match get_password(pamh) {
+        Ok(pass) => unsafe {
+            printf(b"Got a password : %s\n".as_ptr(), pass);
+            PamResult::SUCCESS
+        },
+        Err(msg) => {
+            syslog(pamh, msg);
+            PamResult::AUTHINFO_UNAVAIL
+        },
     }
-
-	PamResult::SUCCESS
 }
 
 #[no_mangle]
