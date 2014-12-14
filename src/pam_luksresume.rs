@@ -33,8 +33,20 @@ pub extern "C" fn pam_sm_close_session(pamh: PamHandle, flags: c_uint,
 	PamResult::SERVICE_ERR
 }
 
+fn get_conv(pamh: PamHandle) -> Result<PamConv, &'static str> {
+    let mut raw_conv : *const c_void = ptr::null();
+    match unsafe {
+        pam_get_item(pamh, PamItemType::PAM_CONV as c_int, &mut raw_conv)
+    } {
+        PamResult::SUCCESS => unsafe { raw_conv.as_ref() }
+            .ok_or("Error getting conversation structure, null result")
+            .map(|conv| unsafe { *transmute::<*const c_void, *const PamConv>(conv) }),
+        _ => Err("Failed to get conversation item.")
+    }
+}
+
 fn get_password(pamh: PamHandle) -> Result<*const c_char, &'static str> {
-    get_conv(pamh).ok_or("Failed to get conversation callback.").and_then(|conv| {
+    get_conv(pamh).and_then(|conv| {
         conv.cb.ok_or("Error, callback is null").and_then(|cb| {
             syslog(pamh, "WE GOT A FUCKING CALLBACK !");
             let msgs = [ PamMessage {
@@ -48,7 +60,7 @@ fn get_password(pamh: PamHandle) -> Result<*const c_char, &'static str> {
                 Err("Error in conversation callback.")
             } else {
                 unsafe { responses.as_ref() }.ok_or("Error, no reponse array.")
-                        .and_then(|rsp| Ok(rsp.resp as *const c_char))
+                        .map(|rsp| rsp.resp as *const c_char)
             }
         })
     })
@@ -95,38 +107,3 @@ pub extern "C" fn pam_sm_chauthtok(pamh: PamHandle, flags: c_uint,
 	PamResult::SERVICE_ERR
 }
 
-fn get_conv(pamh: PamHandle) -> Option<PamConv> {
-    let mut raw_conv : *const c_void = ptr::null();
-    match unsafe {
-        pam_get_item(pamh, PamItemType::PAM_CONV as c_int, &mut raw_conv)
-    } {
-        PamResult::SUCCESS => match unsafe { raw_conv.as_ref() } {
-            None => {
-                syslog(pamh, "Error getting conversation structure, null result");
-                None
-            }
-            Some(conv) => unsafe {
-                Some(*transmute::<*const c_void, *const PamConv>(conv))
-            }
-        },
-        _ => {
-            syslog(pamh, "Error geting conversation structure");
-            None
-        }
-    }
-}
-
-/*
-fn get_password(pamh: PamHandle) -> Option<*const c_char> {
-    let password: *const c_char = ptr::null();
-    match unsafe {
-        pam_get_item(pamh, PamItemType::PAM_AUTHTOK, &mut (password as *const c_void))
-    } {
-        PamResult::SUCCESS => Some(password),
-        _ => {
-            syslog(pamh, "Error geting password");
-            None
-        }
-    }
-}
-*/
