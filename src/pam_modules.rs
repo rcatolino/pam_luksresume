@@ -82,12 +82,12 @@ impl PamResponse {
 #[repr(C)]
 pub struct PamConv {
     pub cb: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
-                                  arg3: *mut *mut PamResponse, arg4: *mut ::libc::c_void)
+                                  arg3: *mut *mut PamResponse, arg4: *mut c_void)
                                   -> c_int>,
-    pub appdata_ptr: *mut ::libc::c_void,
+    pub appdata_ptr: *mut c_void,
 }
 #[repr(C)]
-enum LogLvl {
+pub enum LogLvl {
     LOG_EMERG	=0,	/* system is unusable */
     LOG_ALERT	=1,	/* action must be taken immediately */
     LOG_CRIT	=2,	/* critical conditions */
@@ -135,9 +135,9 @@ pub struct PamXauthData {
 #[link(name="pam")]
 extern "C" {
     pub fn pam_set_item(pamh: PamHandle, item_type: PamItemType,
-                        item: *const ::libc::c_void) -> PamResult;
+                        item: *const c_void) -> PamResult;
     pub fn pam_get_item(pamh: PamHandle, item_type: c_int,
-                        item: *mut *const ::libc::c_void) -> PamResult;
+                        item: *mut *const c_void) -> PamResult;
     pub fn strerror(pamh: PamHandle, errnum: c_int)
      -> *const c_char;
     pub fn putenv(pamh: PamHandle,
@@ -150,13 +150,13 @@ extern "C" {
                           musec_delay: c_uint) -> PamResult;
     pub fn set_data(pamh: PamHandle,
                         module_data_name: *const c_char,
-                        data: *mut ::libc::c_void,
+                        data: *mut c_void,
                         cleanup: Option<extern "C" fn (arg1: PamHandle,
-                                                       arg2: *mut ::libc::c_void,
+                                                       arg2: *mut c_void,
                                                        arg3: c_int)>) -> PamResult;
     pub fn get_data(pamh: PamHandle,
                         module_data_name: *const c_char,
-                        data: *mut *const ::libc::c_void) -> PamResult;
+                        data: *mut *const c_void) -> PamResult;
     pub fn get_user(pamh: PamHandle,
                         user: *mut *const c_char,
                         prompt: *const c_char) -> PamResult;
@@ -178,16 +178,16 @@ extern "C" {
     pub fn sm_chauthtok(pamh: PamHandle, flags: c_uint,
                             argc: c_int,
                             argv: *mut *const c_char) -> PamResult;
-    fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const u8);
-    fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
-                fmt: *const u8, string: *const u8) -> c_int;
+    pub fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const u8);
+    pub fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
+                    fmt: *const u8, string: *const u8) -> c_int;
     pub fn printf(buff: *const u8, buff: *const c_char);
 }
 
 pub fn syslog(pamh: PamHandle, message: &str) {
     let mut buff = [0u8, ..100];
     unsafe {
-        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"%s".as_ptr(),
+        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"%s\0".as_ptr(),
                     message.as_bytes().as_ptr()) > 0 {
             pam_syslog(pamh, LogLvl::LOG_INFO, buff.as_ptr());
         }
