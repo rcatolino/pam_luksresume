@@ -7,32 +7,11 @@ use libc::{c_char, c_int, c_uint};
 
 pub type PamHandle = *const c_uint;
 #[repr(C)]
-pub struct PamMessage {
-    pub msg_style: c_int,
-    pub msg: *const c_char,
-}
-#[repr(C)]
-pub struct PamResponse {
-    pub resp: *mut c_char,
-    pub resp_retcode: c_int,
-}
-#[repr(C)]
-pub struct PamConv {
-    pub cb: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
-                                  arg3: *mut *mut PamResponse, arg4: *mut ::libc::c_void)
-                                  -> c_int>,
-    pub appdata_ptr: *mut ::libc::c_void,
-}
-#[repr(C)]
-enum LogLvl {
-    LOG_EMERG	=0,	/* system is unusable */
-    LOG_ALERT	=1,	/* action must be taken immediately */
-    LOG_CRIT	=2,	/* critical conditions */
-    LOG_ERR		=3,	/* error conditions */
-    LOG_WARNING	=4,	/* warning conditions */
-    LOG_NOTICE	=5,	/* normal but significant condition */
-    LOG_INFO	=6,	/* informational */
-    LOG_DEBUG	=7,	/* debug-level messages */
+pub enum PamMsgStyle {
+    PROMPT_ECHO_OFF =1,	/* Ask for password without echo */
+    PROMPT_ECHO_ON  =2,	/* Ask for password with echo */
+    ERROR_MSG       =3,	/* Display an error message */
+    TEXT_INFO       =4,	/* Display arbitrary text */
 }
 #[repr(C)]
 pub enum PamResult {
@@ -69,7 +48,34 @@ pub enum PamResult {
      CONV_AGAIN         = 30, /* conversation function is event driven and data is not available yet */
      INCOMPLETE         = 31, /* please call this function again to complete authentication stack. Before calling again, verify that conversation is completed */
 }
-
+#[repr(C)]
+pub struct PamMessage {
+    pub msg_style: PamMsgStyle,
+    pub msg: *const u8,
+}
+#[repr(C)]
+pub struct PamResponse {
+    pub resp: *mut c_char,
+    pub resp_retcode: PamResult,
+}
+#[repr(C)]
+pub struct PamConv {
+    pub cb: Option<extern "C" fn (arg1: c_int, arg2: *mut *const PamMessage,
+                                  arg3: *mut *mut PamResponse, arg4: *mut ::libc::c_void)
+                                  -> c_int>,
+    pub appdata_ptr: *mut ::libc::c_void,
+}
+#[repr(C)]
+enum LogLvl {
+    LOG_EMERG	=0,	/* system is unusable */
+    LOG_ALERT	=1,	/* action must be taken immediately */
+    LOG_CRIT	=2,	/* critical conditions */
+    LOG_ERR		=3,	/* error conditions */
+    LOG_WARNING	=4,	/* warning conditions */
+    LOG_NOTICE	=5,	/* normal but significant condition */
+    LOG_INFO	=6,	/* informational */
+    LOG_DEBUG	=7,	/* debug-level messages */
+}
 /* Note: these flags are used for pam_setcred() */
 /* Set user credentials for an authentication service */
 pub mod pam_flags {

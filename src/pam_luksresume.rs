@@ -9,8 +9,8 @@ use core::ptr;
 use core::intrinsics::transmute;
 use core::prelude::*;
 use libc::{c_char, c_void, c_int, c_uint, size_t};
-use pam_modules::{PamConv, PamItemType, PamHandle, PamResult,
-                  pam_get_item, syslog, printf};
+use pam_modules::{PamConv, PamItemType, PamHandle, PamMessage, PamMsgStyle, PamResponse,
+                  PamResult, pam_get_item, syslog, printf};
 mod pam_modules;
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
@@ -42,8 +42,28 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
         Some(conv) => {
             syslog(pamh, "got conversation structure !");
             match conv.cb {
-                Some(cb) => syslog(pamh, "WE GOT A FUCKING CALLBACK !"),
-                None => syslog(pamh, "no callback..."),
+                Some(cb) => {
+                    syslog(pamh, "WE GOT A FUCKING CALLBACK !");
+                    let msgs = [ PamMessage {
+                        msg_style: PamMsgStyle::PROMPT_ECHO_OFF,
+                        msg: b"".as_ptr(),
+                    } ];
+                    let mut responses: *mut PamResponse = ptr::null_mut();
+                    // Send 1 message to client, asking for a password.
+                    // We have to cleanup and free resp array
+                    if cb(1, &mut (msgs.as_ptr()), &mut responses, conv.appdata_ptr) == 1 {
+                        syslog(pamh, "Error in conversation callback.");
+                    } else {
+                        match unsafe { responses.as_ref() } {
+                            Some(rsp) => unsafe {
+                                printf(b"Got a password : %s\n".as_ptr(),
+                                       rsp.resp as *const c_char)
+                            },
+                            None => syslog(pamh, "Error, no reponse array."),
+                        }
+                    }
+                }
+                None => syslog(pamh, "Failed to get conversation callbacks."),
             }
         }
         None => return PamResult::AUTHINFO_UNAVAIL,
