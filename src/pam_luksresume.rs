@@ -6,11 +6,12 @@ extern crate core;
 extern crate libc;
 
 use core::ptr;
+use core::ptr::RawMutPtr;
 use core::intrinsics::transmute;
 use core::prelude::*;
 use libc::{c_void, c_int, c_uint, size_t};
 use pam_modules::{PamConv, PamItemType, PamHandle, PamMessage, PamMsgStyle, PamResponse,
-                  PamResponsePtr, PamResult, pam_get_item, syslog, printf};
+                  PamResult, pam_get_item, syslog, printf};
 mod pam_modules;
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
@@ -45,7 +46,7 @@ fn get_conv(pamh: PamHandle) -> Result<PamConv, &'static str> {
     }
 }
 
-fn get_password(pamh: PamHandle) -> Result<PamResponsePtr, &'static str> {
+fn get_password<'a>(pamh: PamHandle) -> Result<&'a mut PamResponse, &'static str> {
     get_conv(pamh).and_then(|conv| {
         conv.cb.ok_or("Error, callback is null").and_then(|cb| {
             let msgs = [ PamMessage {
@@ -58,7 +59,7 @@ fn get_password(pamh: PamHandle) -> Result<PamResponsePtr, &'static str> {
             if cb(1, &mut (msgs.as_ptr()), &mut ptr, conv.appdata_ptr) == 1 {
                 Err("Error in conversation callback.")
             } else {
-                PamResponsePtr::new(ptr).ok_or("Error, unallocated response array")
+                unsafe { ptr.as_mut() }.ok_or("Error, unallocated response array")
             }
         })
     })
@@ -72,7 +73,7 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
     match get_password(pamh) {
         Ok(pass) => unsafe {
             printf(b"Got a password : %s\n".as_ptr(), pass.get_buff());
-            syslog(pamh, "droping password");
+            pass.cleanup();
             PamResult::SUCCESS
         },
         Err(msg) => {
