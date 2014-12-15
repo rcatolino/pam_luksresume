@@ -10,29 +10,14 @@ use core::ptr::RawMutPtr;
 use core::intrinsics::transmute;
 use core::prelude::*;
 use libc::{c_char, c_void, c_int, c_uint, size_t};
-use libc::funcs::posix88::unistd::{getegid, setgid};
 use pam_modules::{PamConv, PamItemType, PamHandle, PamMessage, PamMsgStyle, PamResponse,
-                  PamResult, LogLvl, pam_get_item, syslog, pam_syslog, snprintf, printf};
-use cryptsetup::{CryptDevice, crypt_init, crypt_init_by_name, crypt_free,
-                 crypt_log, crypt_set_log_callback};
+                  PamResult, pam_get_item, syslog, printf};
 
-mod cryptsetup;
 mod pam_modules;
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
-
-#[no_mangle]
-#[allow(unused_variables)]
-pub extern "C" fn crypt_log_cb(level: c_int, msg: *const u8, pamh: *const c_void) {
-    unsafe {
-        let mut buff = [0u8, ..100];
-        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"%s".as_ptr(), msg) > 0 {
-            pam_syslog(pamh as PamHandle, LogLvl::LOG_INFO, buff.as_ptr());
-        }
-    }
-}
 
 #[no_mangle]
 #[allow(unused_variables)]
@@ -81,20 +66,7 @@ fn get_password<'a>(pamh: PamHandle) -> Result<&'a mut PamResponse, &'static str
     })
 }
 
-fn try_resume<'a>(pamh: PamHandle, pass: &'a PamResponse) {
-    let mut crypt_dev: CryptDevice = ptr::null_mut();
-    unsafe {
-        // Need privileges ?
-        setgid(6);
-        printf(b"Current egid : %d\n\0".as_ptr(), getegid() as *const c_char);
-        let errno = crypt_init(&mut crypt_dev, b"/dev/dm-1".as_ptr() as *const c_char);
-        if errno != 0 {
-            printf(b"Failed to initialize dm-crypt backend : %d\n\0".as_ptr(), errno as *const c_char);
-        } else {
-            crypt_set_log_callback(crypt_dev, crypt_log_cb, pamh as *const c_void);
-            crypt_free(crypt_dev);
-        }
-    }
+fn try_resume<'a>(pass: &'a PamResponse) {
 }
 
 #[no_mangle]
@@ -105,7 +77,7 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
     match get_password(pamh) {
         Ok(pass) => unsafe {
             printf(b"Got a password : %s\n".as_ptr(), pass.get_buff());
-            try_resume(pamh, pass);
+            try_resume(pass);
             pass.cleanup();
             PamResult::SUCCESS
         },
