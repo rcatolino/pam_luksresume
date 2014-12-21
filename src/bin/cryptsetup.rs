@@ -87,9 +87,10 @@ impl CryptDevice {
 
         }
     }
+}
 
-    pub fn free(self) {
-        println!("Freeing crypt device");
+impl Drop for CryptDevice {
+    fn drop(&mut self) {
         unsafe { crypt_free(self.indev) };
     }
 }
