@@ -5,26 +5,6 @@ use std::c_str::CString;
 use std::ptr;
 
 pub type InnerCryptDevice = *mut c_int;
-#[repr(C)]
-pub struct CryptParamsPlain {
-    pub hash: *const c_char,
-    pub offset: u64,
-    pub skip: u64,
-    pub size: u64,
-}
-#[repr(C)]
-pub struct CryptParamsLuks1 {
-    pub hash: *const c_char,
-    pub data_alignment: size_t,
-    pub data_device: *const c_char,
-}
-#[repr(C)]
-pub struct CryptActiveDevice {
-    pub offset: u64,
-    pub iv_offset: u64,
-    pub size: u64,
-    pub flags: u32,
-}
 
 #[repr(C)]
 pub enum CryptStatusInfo {
@@ -36,38 +16,19 @@ pub enum CryptStatusInfo {
 
 #[link(name="cryptsetup")]
 extern "C" {
-    pub fn crypt_init(cd: *mut InnerCryptDevice, device: *const c_char) -> c_int;
-    pub fn crypt_init_by_name_and_header(cd: *mut InnerCryptDevice,
-                                         name: *const c_char,
-                                         header_device: *const c_char) -> c_int;
     pub fn crypt_init_by_name(cd: *mut InnerCryptDevice, name: *const c_char) -> c_int;
     pub fn crypt_set_log_callback(cd: InnerCryptDevice,
                                   log: extern "C" fn (lvl: c_int, msg: *const c_char,
                                                       usrptr: *const c_void),
                                   usrptr: *const c_void);
-    pub fn crypt_log(cd: InnerCryptDevice, level: c_int, msg: *const u8);
-    pub fn crypt_set_iterarion_time(cd: InnerCryptDevice, iteration_time_ms: u64);
-    pub fn crypt_set_data_device(cd: InnerCryptDevice, device: *const c_char) -> c_int;
-    pub fn crypt_memory_lock(cd: InnerCryptDevice, lock: c_int) -> c_int;
-    pub fn crypt_get_type(cd: InnerCryptDevice) -> *const c_char;
     pub fn crypt_load(cd: InnerCryptDevice, requested_type: *const c_char,
                       params: *const c_void) -> c_int;
-    pub fn crypt_suspend(cd: InnerCryptDevice, name: *const c_char) -> c_int;
     pub fn crypt_resume_by_passphrase(cd: InnerCryptDevice,
                                       name: *const c_char,
                                       keyslot: c_int,
                                       passphrase: *const c_char,
                                       passphrase_size: size_t) -> c_int;
     pub fn crypt_free(cd: InnerCryptDevice);
-    pub fn crypt_volume_key_verify(cd: InnerCryptDevice,
-                                   volume_key: *const c_char,
-                                   volume_key_size: size_t) -> c_int;
-    pub fn crypt_status(cd: InnerCryptDevice,
-                        name: *const c_char) -> CryptStatusInfo;
-    pub fn crypt_dump(cd: InnerCryptDevice) -> c_int;
-    pub fn crypt_get_uuid(cd: InnerCryptDevice) -> *const c_char;
-    pub fn crypt_get_device_name(cd: InnerCryptDevice) -> *const c_char;
-    pub fn crypt_get_dir() -> *const c_char;
     pub fn crypt_set_debug_level(level: c_int);
 }
 
