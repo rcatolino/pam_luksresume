@@ -13,7 +13,9 @@ crate-type = ["dylib"]
 [profile.dev]
 opt-level = 0
 debug = true
+lto = true
 
 [profile.release]
 opt-level = 3
 debug = false
+lto = true
