@@ -14,7 +14,7 @@ use std::slice::from_raw_buf;
 use std::str::from_utf8;
 use libc::{c_char, c_void, c_int, c_uint, pid_t, size_t, strlen};
 use pam_modules::{PamConv, PamItemType, PamHandle, PamMessage, PamMsgStyle, PamResponse,
-                  PamResult, pam_get_item, syslog, printf};
+                  PamResult, pam_get_item, syslog};
 
 mod pam_modules;
 
@@ -111,15 +111,23 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
     };
 
     match get_password(pamh) {
-        Ok(pass) => unsafe {
-            printf(b"Got a password : %s\n".as_ptr(), pass.get_buff());
-            match try_resume(pass, helper, dev_name) {
-                Err(msg) => syslog(pamh, msg),
-                Ok(true) => syslog(pamh, "Successfullness!!!!"),
-                Ok(false) => syslog(pamh, "Failed to authenticate"),
-            }
+        Ok(pass) => {
+            let ret = match try_resume(pass, helper, dev_name) {
+                Err(msg) => {
+                    syslog(pamh, msg);
+                    PamResult::SERVICE_ERR
+                },
+                Ok(true) => {
+                    syslog(pamh, "Successful authentication");
+                    PamResult::SUCCESS
+                },
+                Ok(false) => {
+                    syslog(pamh, "Failed to authenticate");
+                    PamResult::AUTH_ERR
+                },
+            };
             pass.cleanup();
-            PamResult::SUCCESS
+            ret
         },
         Err(msg) => {
             syslog(pamh, msg);
