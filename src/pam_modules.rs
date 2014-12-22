@@ -67,12 +67,10 @@ impl PamResponse {
     pub fn cleanup(&mut self) {
         unsafe {
             if ! self.resp.is_null() {
-                printf(b"Freing response value : %p\n".as_ptr(), self.resp as *const c_char);
                 volatile_set_memory(self.resp, 0u8, strlen(self.resp as *const c_char) as uint);
                 free(self.resp as *mut c_void);
             }
             let asptr: *mut PamResponse = self;
-            printf(b"Freing response array : %p\n".as_ptr(), asptr as *const c_char);
             free(asptr as *mut c_void);
         }
     }
@@ -181,7 +179,6 @@ extern "C" {
     pub fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const u8);
     pub fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
                     fmt: *const u8, string: *const u8) -> c_int;
-    pub fn printf(buff: *const u8, buff: *const c_char);
 }
 
 pub fn syslog(pamh: PamHandle, message: &str) {
