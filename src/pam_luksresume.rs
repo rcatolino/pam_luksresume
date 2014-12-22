@@ -2,22 +2,24 @@
 #![no_std]
 #![feature(lang_items)]
 
-extern crate core;
 extern crate libc;
+extern crate std;
 
-use core::ptr;
-use core::ptr::RawMutPtr;
-use core::intrinsics::transmute;
-use core::prelude::*;
-use libc::{c_char, c_void, c_int, c_uint, size_t};
+use std::io::Command;
+use std::io::process::StdioContainer::InheritFd;
+use std::intrinsics::transmute;
+use std::prelude::*;
+use std::ptr;
+use std::slice::from_raw_buf;
+use libc::{c_char, c_void, c_int, c_uint, pid_t, size_t, strlen};
 use pam_modules::{PamConv, PamItemType, PamHandle, PamMessage, PamMsgStyle, PamResponse,
                   PamResult, pam_get_item, syslog, printf};
 
 mod pam_modules;
 
-#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
-#[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
+extern "C" {
+    pub fn waitpid(pid: pid_t, info: *mut c_int, options: c_int);
+}
 
 #[no_mangle]
 #[allow(unused_variables)]
@@ -66,7 +68,26 @@ fn get_password<'a>(pamh: PamHandle) -> Result<&'a mut PamResponse, &'static str
     })
 }
 
-fn try_resume<'a>(pass: &'a PamResponse) {
+fn try_resume(pass: &PamResponse) -> Result<bool, &'static str> {
+    // TODO: remove hardcoded strings.
+    let mut cmd = Command::new("/home/raph/usr/local/lib/pam_luksresume/pam_luksresume_helper");
+    cmd.env_set_all([("USER", "")].as_slice());
+    cmd.stdout(InheritFd(1 as c_int));
+    cmd.arg("_dev_sda4");
+    match cmd.spawn().and_then(|mut process| {
+        process.stdin.as_mut().map(|mut pipe| {
+            let ref_ptr = &(pass.get_buff() as *const u8);
+            unsafe {
+                pipe.write(from_raw_buf(ref_ptr, strlen(pass.get_buff()) as uint));
+            }
+        });
+        process.wait()
+    }) {
+        Ok(status) => {
+            Ok(status.success())
+        },
+        Err(ioerr) => Err(ioerr.desc),
+    }
 }
 
 #[no_mangle]
@@ -77,7 +98,11 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
     match get_password(pamh) {
         Ok(pass) => unsafe {
             printf(b"Got a password : %s\n".as_ptr(), pass.get_buff());
-            try_resume(pass);
+            match try_resume(pass) {
+                Err(msg) => syslog(pamh, msg),
+                Ok(true) => syslog(pamh, "Successfullness!!!!"),
+                Ok(false) => syslog(pamh, "Failed to authenticate"),
+            }
             pass.cleanup();
             PamResult::SUCCESS
         },

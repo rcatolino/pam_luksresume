@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use core::prelude::*;
-use core::intrinsics::volatile_set_memory;
+use std::intrinsics::volatile_set_memory;
+use std::prelude::*;
 use libc::{c_char, c_int, c_uint, c_void, free, strlen};
 
 pub type PamHandle = *const c_uint;
