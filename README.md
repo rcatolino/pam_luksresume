@@ -3,7 +3,7 @@ pam_luksresume
 inspired by https://github.com/dorinp/pam-mount
 
 A Linux PAM module that authenticates by resuming a suspended luks container.
-It Use the result of the luksResume action to validate the password, instead of
+It uses the result of the luksResume action to validate the password, instead of
 the user account info.
 
 This is useful to resume a luks volume when unlocking a lock screen.

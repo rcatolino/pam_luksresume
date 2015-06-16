@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use libc::{STDOUT_FILENO, c_char, c_int, c_void, size_t, strlen, write};
-use std::c_str::CString;
+use std::ffi::{CStr, CString};
 use std::ptr;
 
 pub type InnerCryptDevice = *mut c_int;
@@ -48,7 +48,10 @@ pub struct CryptDevice {
 impl CryptDevice {
     pub fn new_by_name(dev_name: &str) -> Option<CryptDevice> {
         let mut crypt_dev: InnerCryptDevice = ptr::null_mut();
-        let name = dev_name.to_c_str();
+        let name = match CString::new(dev_name) {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
         if unsafe { crypt_init_by_name(&mut crypt_dev, name.as_ptr()) != 0 } {
             None
         } else {

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::intrinsics::volatile_set_memory;
-use std::prelude::*;
+use std::option::Option;
 use libc::{c_char, c_int, c_uint, c_void, free, strlen};
 
 pub type PamHandle = *const c_uint;
@@ -67,7 +67,7 @@ impl PamResponse {
     pub fn cleanup(&mut self) {
         unsafe {
             if ! self.resp.is_null() {
-                volatile_set_memory(self.resp, 0u8, strlen(self.resp as *const c_char) as uint);
+                volatile_set_memory(self.resp, 0u8, strlen(self.resp as *const c_char) as usize);
                 free(self.resp as *mut c_void);
             }
             let asptr: *mut PamResponse = self;
@@ -182,7 +182,7 @@ extern "C" {
 }
 
 pub fn syslog(pamh: PamHandle, message: &str) {
-    let mut buff = [0u8, ..100];
+    let mut buff = [0u8; 100];
     unsafe {
         if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"%s\0".as_ptr(),
                     message.as_bytes().as_ptr()) > 0 {

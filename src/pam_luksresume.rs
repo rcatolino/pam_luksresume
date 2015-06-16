@@ -1,26 +1,24 @@
-#![feature(globs)]
+#![feature(core,lang_items,libc,no_std)]
 #![no_std]
-#![feature(lang_items)]
 
 extern crate libc;
 extern crate std;
 
-use std::io::Command;
-use std::io::process::StdioContainer::InheritFd;
-use std::intrinsics::transmute;
-use std::prelude::*;
+use std::error::Error;
+use std::io::Write;
+use std::mem::transmute_copy;
+use std::process::Command;
+use std::process::Stdio;
 use std::ptr;
-use std::slice::from_raw_buf;
+use std::result::Result;
+use std::result::Result::{Ok,Err};
+use std::slice::from_raw_parts;
 use std::str::from_utf8;
-use libc::{c_char, c_void, c_int, c_uint, pid_t, size_t, strlen};
+use libc::{c_char, c_void, c_int, c_uint, size_t, strlen};
 use pam_modules::{PamConv, PamItemType, PamHandle, PamMessage, PamMsgStyle, PamResponse,
                   PamResult, pam_get_item, syslog};
 
 mod pam_modules;
-
-extern "C" {
-    pub fn waitpid(pid: pid_t, info: *mut c_int, options: c_int);
-}
 
 #[no_mangle]
 #[allow(unused_variables)]
@@ -45,7 +43,7 @@ fn get_conv(pamh: PamHandle) -> Result<PamConv, &'static str> {
     } {
         PamResult::SUCCESS => unsafe { raw_conv.as_ref() }
             .ok_or("Error getting conversation structure, null result")
-            .map(|conv| unsafe { *transmute::<*const c_void, *const PamConv>(conv) }),
+            .map(|conv| unsafe { transmute_copy::<c_void, PamConv>(conv) }),
         _ => Err("Failed to get conversation item.")
     }
 }
@@ -70,20 +68,17 @@ fn get_password<'a>(pamh: PamHandle) -> Result<&'a mut PamResponse, &'static str
 }
 
 fn try_resume(pass: &PamResponse, helper_path: &str,
-              dev_name: &str) -> Result<bool, &'static str> {
+              dev_name: &str) -> Result<bool, std::io::Error> {
     let mut cmd = Command::new(helper_path);
-    cmd.env_set_all([("", "")].as_slice());
-    cmd.stdout(InheritFd(1 as c_int));
-    cmd.arg(dev_name);
-    cmd.spawn().and_then(|mut process| {
+    cmd.env_clear().stdout(Stdio::inherit()).arg(dev_name).spawn().and_then(|mut process| {
         process.stdin.as_mut().map(|mut pipe| {
-            let ref_ptr = &(pass.get_buff() as *const u8);
+            let ref_ptr = pass.get_buff() as *const u8;
             unsafe {
-                pipe.write(from_raw_buf(ref_ptr, strlen(pass.get_buff()) as uint))
+                pipe.write(from_raw_parts(ref_ptr, strlen(pass.get_buff()) as usize))
             }
         });
         process.wait()
-    }).map(|status| status.success()).map_err(|ioerr| ioerr.desc)
+    }).map(|status| status.success())
 }
 
 #[no_mangle]
@@ -98,11 +93,11 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
     }
 
     let (helper, dev_name) = unsafe {
-        let args = from_raw_buf(&argv, argc as uint);
-        let mbh = from_utf8(from_raw_buf(&args[0], strlen(args[0] as *const c_char) as uint));
-        let mbn = from_utf8(from_raw_buf(&args[1], strlen(args[1] as *const c_char) as uint));
+        let args = from_raw_parts(argv, argc as usize);
+        let mbh = from_utf8(from_raw_parts(args[0], strlen(args[0] as *const c_char) as usize));
+        let mbn = from_utf8(from_raw_parts(args[1], strlen(args[1] as *const c_char) as usize));
         match (mbh, mbn) {
-            (Some(h), Some(n)) => (h, n),
+            (Ok(h), Ok(n)) => (h, n),
             _ => {
                 syslog(pamh, "Error, arguments must be utf8 encoded");
                 return PamResult::SERVICE_ERR;
@@ -113,8 +108,8 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
     match get_password(pamh) {
         Ok(pass) => {
             let ret = match try_resume(pass, helper, dev_name) {
-                Err(msg) => {
-                    syslog(pamh, msg);
+                Err(e) => {
+                    syslog(pamh, e.description());
                     PamResult::SERVICE_ERR
                 },
                 Ok(true) => {
