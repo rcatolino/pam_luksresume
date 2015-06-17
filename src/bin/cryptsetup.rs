@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use libc::{STDOUT_FILENO, c_char, c_int, c_void, size_t, strlen, write};
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::ptr;
 
 pub type InnerCryptDevice = *mut c_int;
@@ -32,7 +32,6 @@ extern "C" {
     pub fn crypt_set_debug_level(level: c_int);
 }
 
-#[no_mangle]
 #[allow(unused_variables)]
 pub extern "C" fn crypt_log_cb(level: c_int, msg: *const c_char, _: *const c_void) {
     unsafe {
