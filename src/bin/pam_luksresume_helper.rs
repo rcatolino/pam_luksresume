@@ -37,10 +37,13 @@ fn main() {
     }).and_then(|cd| {
         let mut inpass = String::new();
         match io::stdin().read_line(&mut inpass) {
-            Ok(_) => if cd.resume(inpass.trim_right_matches('\n')) {
-                Ok(())
-            } else {
-                Err((4, String::from("Error resuming volume")))
+            Ok(_) => {
+                match cd.resume(inpass.trim_right_matches('\n')) {
+                    errno if errno < 0 => {
+                        Err((4, format!("Error resuming volume, errno : {}", errno)))
+                    }
+                    _ => Ok(()),
+                }
             },
             Err(err) => Err((5, format!("Error reading passphrase: {}", err))),
         }

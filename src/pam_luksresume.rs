@@ -70,7 +70,7 @@ fn get_password<'a>(pamh: PamHandle) -> Result<&'a mut PamResponse, &'static str
 fn try_resume(pass: &PamResponse, helper_path: &str,
               dev_name: &str) -> Result<bool, std::io::Error> {
     let mut cmd = Command::new(helper_path);
-    cmd.env_clear().stdout(Stdio::inherit()).arg(dev_name).spawn().and_then(|mut process| {
+    cmd.env_clear().stdin(Stdio::piped()).arg(dev_name).spawn().and_then(|mut process| {
         process.stdin.as_mut().map(|mut pipe| {
             let ref_ptr = pass.get_buff() as *const u8;
             unsafe {

@@ -81,11 +81,11 @@ impl CryptDevice {
         }
     }
 
-    pub fn resume(&self, pass: &str) -> bool {
+    pub fn resume(&self, pass: &str) -> i64 {
         unsafe {
             crypt_resume_by_passphrase(self.indev, self.name.as_ptr(),
                                        -1 as c_int, pass.as_ptr() as *const c_char,
-                                       pass.len() as u64) >= 0
+                                       pass.len() as u64) as i64
 
         }
     }
