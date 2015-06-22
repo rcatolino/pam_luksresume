@@ -24,7 +24,8 @@ Make sure to run the luksSuspend action when starting the lockscreen.
 Replace the pam method used by your lockscreen (in the /etc/pam.d/$lockscreen file) with :
 
 ```
-auth require pam_luksresume.so <path to resume helper> <device name>
+auth [success=done service_err=ignore auth_err=die] pam_luksresume.so <path to resume helper> <device name>
+auth      required  pam_unix.so try_first_pass nullok
 ```
 
 The device name corresponds to the name given to the mapped volume, not

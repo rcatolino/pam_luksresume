@@ -116,11 +116,11 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
                     syslog(pamh, "Successful authentication");
                     PamResult::SUCCESS
                 },
-                Ok(ret_val) if ret_val == -22 => {
+                Ok(ret_val) if ret_val == 255 => {
                     syslog(pamh, "Bad passphrase");
                     PamResult::AUTH_ERR
                 },
-                Ok(_) => {
+                Ok(ret_val) => {
                     syslog(pamh, "Error in pam_luksresume_helper");
                     PamResult::SERVICE_ERR
                 }

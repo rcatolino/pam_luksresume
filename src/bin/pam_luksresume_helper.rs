@@ -40,7 +40,7 @@ fn main() {
             Ok(_) => {
                 match cd.resume(inpass.trim_right_matches('\n')) {
                     errno if errno < 0 => {
-                        if errno as i32 == 0 { errno == -1; }
+                        if errno as u8 == 0 { errno == -1; }
                         Err((errno as i32, format!("Error resuming volume, errno : {}", errno)))
                     }
                     _ => Ok(()),
