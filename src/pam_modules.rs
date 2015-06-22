@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
+use std::ffi::CString;
 use std::intrinsics::volatile_set_memory;
 use std::option::Option;
+use std::result::Result::Ok;
 use libc::{c_char, c_int, c_uint, c_void, free, strlen};
 
 pub type PamHandle = *const c_uint;
@@ -176,20 +178,15 @@ extern "C" {
     pub fn sm_chauthtok(pamh: PamHandle, flags: c_uint,
                             argc: c_int,
                             argv: *mut *const c_char) -> PamResult;
-    pub fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const u8);
-    pub fn snprintf(buff: *mut c_char, buff_size: ::libc::size_t,
-                    fmt: *const u8, string: *const u8) -> c_int;
+    pub fn pam_syslog(pamh: PamHandle, priority: LogLvl, fmt: *const i8);
 }
 
 pub fn syslog(pamh: PamHandle, message: &str) {
-    let mut buff = [0u8; 100];
     unsafe {
-        if snprintf(buff.as_mut_ptr() as *mut c_char, 100, b"%s\0".as_ptr(),
-                    message.as_bytes().as_ptr()) > 0 {
-            pam_syslog(pamh, LogLvl::LOG_INFO, buff.as_ptr());
+        match CString::new(message) {
+            Ok(msg) => pam_syslog(pamh, LogLvl::LOG_INFO, msg.as_ptr()),
+            _ => ()
         }
-        // XXX: should/could we do something in case of snprintf failure ?
-        // panicking seems a little extreme...
     }
 }
 

@@ -68,7 +68,7 @@ fn get_password<'a>(pamh: PamHandle) -> Result<&'a mut PamResponse, &'static str
 }
 
 fn try_resume(pass: &PamResponse, helper_path: &str,
-              dev_name: &str) -> Result<bool, std::io::Error> {
+              dev_name: &str) -> Result<i32, std::io::Error> {
     let mut cmd = Command::new(helper_path);
     cmd.env_clear().stdin(Stdio::piped()).arg(dev_name).spawn().and_then(|mut process| {
         process.stdin.as_mut().map(|mut pipe| {
@@ -78,7 +78,7 @@ fn try_resume(pass: &PamResponse, helper_path: &str,
             }
         });
         process.wait()
-    }).map(|status| status.success())
+    }).map(|status| status.code().unwrap_or(255))
 }
 
 #[no_mangle]
@@ -112,14 +112,18 @@ pub extern "C" fn pam_sm_authenticate(pamh: PamHandle, flags: c_uint,
                     syslog(pamh, e.description());
                     PamResult::SERVICE_ERR
                 },
-                Ok(true) => {
+                Ok(ret_val) if ret_val == 0 => {
                     syslog(pamh, "Successful authentication");
                     PamResult::SUCCESS
                 },
-                Ok(false) => {
-                    syslog(pamh, "Failed to authenticate");
+                Ok(ret_val) if ret_val == -22 => {
+                    syslog(pamh, "Bad passphrase");
                     PamResult::AUTH_ERR
                 },
+                Ok(_) => {
+                    syslog(pamh, "Error in pam_luksresume_helper");
+                    PamResult::SERVICE_ERR
+                }
             };
             pass.cleanup();
             ret
