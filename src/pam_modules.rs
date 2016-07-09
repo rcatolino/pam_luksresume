@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::ffi::CString;
-use std::intrinsics::volatile_set_memory;
+use std::ptr::write_volatile;
 use std::option::Option;
 use std::result::Result::Ok;
 use libc::{c_char, c_int, c_uint, c_void, free, strlen};
@@ -69,7 +69,9 @@ impl PamResponse {
     pub fn cleanup(&mut self) {
         unsafe {
             if ! self.resp.is_null() {
-                volatile_set_memory(self.resp, 0u8, strlen(self.resp as *const c_char) as usize);
+                for _ in 0..strlen(self.resp) {
+                    write_volatile(self.resp, 0i8);
+                }
                 free(self.resp as *mut c_void);
             }
             let asptr: *mut PamResponse = self;

@@ -1,8 +1,8 @@
-#![feature(libc,exit_status,convert)]
 
 extern crate libc;
 
 use std::env;
+use std::process::exit;
 use std::io;
 use libc::setuid;
 use cryptsetup::CryptDevice;
@@ -10,13 +10,16 @@ use cryptsetup::CryptDevice;
 mod cryptsetup;
 
 fn main() {
+    exit(real_main());
+}
+
+fn real_main() -> i32 {
     let mut args = env::args();
     let dev_name = match args.nth(1) {
         Some(name) => name,
         None => {
             println!("Error, usage : pam_luksresume_helper <device name>");
-            env::set_exit_status(-1);
-            return;
+            return -1;
         }
     };
 
@@ -51,10 +54,10 @@ fn main() {
     }).err();
 
     match result {
-        None => env::set_exit_status(0),
+        None => 0,
         Some((ret, err)) => {
             println!("{}", err);
-            env::set_exit_status(ret)
+            ret
         }
     }
 }

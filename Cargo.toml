@@ -1,7 +1,7 @@
 [package]
 name = "pam_luksresume"
 version = "0.0.1"
-authors = [ "Raphael Catolino<raphael.catolino@gmail.com>" ]
+authors = [ "raphael.catolino@gmail.com" ]
 
 [[bin]]
 name = "pam_luksresume_helper"
@@ -9,6 +9,9 @@ name = "pam_luksresume_helper"
 [lib]
 name = "pam_luksresume"
 crate-type = ["dylib"]
+
+[dependencies]
+libc = "^0.2.13"
 
 [profile.dev]
 opt-level = 0

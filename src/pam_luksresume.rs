@@ -1,4 +1,3 @@
-#![feature(core,lang_items,libc,no_std)]
 #![no_std]
 
 extern crate libc;

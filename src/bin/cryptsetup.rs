@@ -85,7 +85,7 @@ impl CryptDevice {
         unsafe {
             crypt_resume_by_passphrase(self.indev, self.name.as_ptr(),
                                        -1 as c_int, pass.as_ptr() as *const c_char,
-                                       pass.len() as u64) as i64
+                                       pass.len()) as i64
 
         }
     }
