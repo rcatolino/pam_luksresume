@@ -18,9 +18,16 @@ fn real_main() -> i32 {
     let dev_name = match args.nth(1) {
         Some(name) => name,
         None => {
-            println!("Error, usage : pam_luksresume_helper <device name>");
+            println!("Error, usage : pam_luksresume_helper <device name> [debug]");
             return -1;
         }
+    };
+
+    let debug = match args.next() {
+        Some(v) => {
+            v == "debug"
+        }
+        None => false,
     };
 
     let crypt_dev = if unsafe { setuid(0) == -1 } {
@@ -31,7 +38,9 @@ fn real_main() -> i32 {
     };
 
     let result = crypt_dev.and_then(|cd| {
-        CryptDevice::set_debug(true);
+        if debug {
+            CryptDevice::set_debug(true);
+        }
         if cd.luks_load() {
             Ok(cd)
         } else {
@@ -56,7 +65,9 @@ fn real_main() -> i32 {
     match result {
         None => 0,
         Some((ret, err)) => {
-            println!("{}", err);
+            if debug {
+                println!("{}", err);
+            }
             ret
         }
     }

@@ -11,7 +11,8 @@ name = "pam_luksresume"
 crate-type = ["dylib"]
 
 [dependencies]
-libc = "^0.2.13"
+pamsm = { git = "https://github.com/rcatolino/pam_sm_rust" }
+libc = "^0.2.20"
 
 [profile.dev]
 opt-level = 0
